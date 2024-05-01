@@ -22,6 +22,6 @@ jobs:
         run: npm run build
       - name: Create Pull request or Publish
         id: changeset
-        uses: changesets/action@v3
+        uses: changesets/action@v1
         with:
           publish: npm run build
