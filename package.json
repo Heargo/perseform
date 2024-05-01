@@ -1,6 +1,6 @@
 {
   "name": "perseform",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Allow to keep track of form states and inputs dependencies",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
