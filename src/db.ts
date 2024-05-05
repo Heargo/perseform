@@ -1,4 +1,4 @@
-import { FormConfig } from "./model";
+import { FormConfig, FormState, globalValue } from "./types";
 
 /**
  * Initializes the indexedDB for form configuration.
@@ -34,8 +34,8 @@ export function initIndexDb() {
  * @param type - The type of the form ('Config' or 'State').
  * @returns A promise that resolves with the IDBValidKey of the saved form.
  */
-export async function saveForm(
-  form: FormConfig,
+export async function save(
+  form: FormState | FormConfig,
   type: "Config" | "State"
 ): Promise<IDBValidKey> {
   return new Promise((resolve, reject) => {
@@ -50,7 +50,7 @@ export async function saveForm(
       putRequest.onerror = (event) => {
         reject(event);
       };
-      putRequest.onsuccess = () => {
+      putRequest.onsuccess = async () => {
         resolve(putRequest.result);
       };
     };
@@ -58,15 +58,15 @@ export async function saveForm(
 }
 
 /**
- * Retrieves a form configuration from the indexedDB based on the provided id and type.
+ * Retrieves an object from the indexedDB based on the provided id and type.
  * @param id - The id of the form configuration to retrieve.
  * @param type - The type of the form configuration ('Config' or 'State').
- * @returns A Promise that resolves with the retrieved FormConfig object.
+ * @returns A Promise that resolves with the retrieved T object.
  */
-export async function getForm(
+export async function get<T>(
   id: string,
   type: "Config" | "State"
-): Promise<FormConfig | undefined> {
+): Promise<T | undefined> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open("appFormsConfig", 3);
     request.onsuccess = () => {
@@ -91,7 +91,9 @@ export async function getForm(
  * @param id - The id of the global value to retrieve.
  * @returns A promise that resolves with the retrieved global value.
  */
-export async function getGlobalValue(id: string) {
+export async function getGlobalValueFromDb(
+  id: string
+): Promise<unknown | undefined> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open("appFormsConfig", 3);
     request.onsuccess = () => {
@@ -100,7 +102,7 @@ export async function getGlobalValue(id: string) {
       const store = transaction.objectStore("globalValue");
       const getRequest = store.get(id);
       getRequest.onsuccess = () => {
-        resolve(getRequest.result);
+        resolve(getRequest.result.value);
       };
       getRequest.onerror = (event) => {
         reject(event);
@@ -131,4 +133,19 @@ export async function saveGlobalValue(id: string, value: unknown) {
       };
     };
   });
+}
+
+export async function saveAllGlobalValues(form: FormState) {
+  const config = await get<FormConfig>(form.id, "Config");
+  if (config) {
+    for (const key in config.inputsConfig) {
+      const input = config.inputsConfig[key]!;
+      if (input.globalKey) {
+        await saveGlobalValue(
+          input.globalKey,
+          (form as unknown as FormState).state[key]
+        );
+      }
+    }
+  }
 }

@@ -1,22 +1,21 @@
 export interface FormConfig {
   id: string;
-  inputs: { [key: string]: InputConfig<unknown> };
+  inputsConfig: { [key: string]: InputConfig<unknown> };
+}
+
+export interface FormState {
+  id: string;
+  state: { [key: string]: unknown };
 }
 
 export interface InputConfig<T> {
-  type: InputType;
   globalKey?: string;
-  label?: string;
-  placeholder?: string;
   value?: T;
-  required?: boolean;
-  disabled?: boolean;
-  options?: InputOption<T>[];
-  hidden?: boolean;
-  readonly?: boolean;
-  defaultValue?: string;
+  options?: (
+    state: FormState | undefined,
+    config: FormConfig
+  ) => InputOption<T>[];
   dependencies?: (InputDependency | string)[];
-  //TODO: add a way to change options based on the value of dependencies
 }
 
 export interface InputOption<T> {

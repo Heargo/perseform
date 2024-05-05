@@ -2,6 +2,11 @@
 
 Perseform is a tool to keep track of forms state and inputs dependencies. This is useful if you have an app with a lot of filters and you want to keep track of the state of each filter and the dependencies between them.
 
+Features :
+
+- Keep track of the state of each input
+- Allow to define dependencies between inputs
+
 ## Installation
 
 ```bash
