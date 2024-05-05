@@ -1,5 +1,11 @@
-import { FormConfig, InputOption } from "./model";
-import { getForm, getGlobalValue, saveForm } from "./db";
+import { FormConfig, FormState, InputOption } from "./types";
+import {
+  get,
+  getGlobalValueFromDb,
+  save,
+  saveAllGlobalValues,
+  saveGlobalValue,
+} from "./db";
 
 /**
  * Retrieves the form value for a given ID. It will first try to get the form state
@@ -7,15 +13,23 @@ import { getForm, getGlobalValue, saveForm } from "./db";
  * @param id - The ID of the form.
  * @returns A Promise that resolves to the FormConfig object if found, otherwise undefined.
  */
-export async function getFormValue(
-  id: string
-): Promise<FormConfig | undefined> {
-  const formState = await getFormState(id);
-  if (formState !== undefined) {
-    return formState;
-  } else {
-    return await getFormConfig(id);
+export async function getFormState(id: string): Promise<FormState | undefined> {
+  let formState = await getFormCurrentState(id);
+  if (!formState) {
+    const formConfig = await getFormConfig(id);
+    if (formConfig !== undefined) {
+      const state = Object.keys(formConfig.inputsConfig).reduce((acc, key) => {
+        acc[key] = formConfig.inputsConfig[key]!.value;
+        return acc;
+      }, {} as { [key: string]: unknown });
+
+      formState = {
+        id: formConfig.id,
+        state: state,
+      };
+    }
   }
+  return formState;
 }
 
 /**
@@ -24,8 +38,16 @@ export async function getFormValue(
  * @param form - The form configuration to save.
  * @returns A promise that resolves with the ID of the saved form configuration.
  */
-export function saveFormConfig(form: FormConfig): Promise<IDBValidKey> {
-  return saveForm(form, "Config");
+export async function saveFormConfig(form: FormConfig): Promise<IDBValidKey> {
+  //create global state if needed
+  for (const key in form.inputsConfig) {
+    const input = form.inputsConfig[key]!;
+    const globalValue = getGlobalValueFromDb(input.globalKey!);
+    if (input.globalKey && !globalValue) {
+      await saveGlobalValue(input.globalKey, input.value);
+    }
+  }
+  return save(form, "Config");
 }
 
 /**
@@ -33,10 +55,8 @@ export function saveFormConfig(form: FormConfig): Promise<IDBValidKey> {
  * @param id - The ID of the form.
  * @returns A Promise that resolves to the FormConfig object.
  */
-export async function getFormConfig(
-  id: string
-): Promise<FormConfig | undefined> {
-  return await getForm(id, "Config");
+async function getFormConfig(id: string): Promise<FormConfig | undefined> {
+  return await get<FormConfig>(id, "Config");
 }
 
 /**
@@ -45,8 +65,10 @@ export async function getFormConfig(
  * @param form - The form configuration to save.
  * @returns A promise that resolves with the IDBValidKey of the saved form state.
  */
-export function saveFormState(form: FormConfig): Promise<IDBValidKey> {
-  return saveForm(form, "State");
+export async function saveFormState(form: FormState): Promise<IDBValidKey> {
+  //save global values
+  await saveAllGlobalValues(form);
+  return save(form, "State");
 }
 
 /**
@@ -54,15 +76,14 @@ export function saveFormState(form: FormConfig): Promise<IDBValidKey> {
  * @param id - The ID of the form.
  * @returns A Promise that resolves to the FormConfig object representing the form state.
  */
-export async function getFormState(
-  id: string
-): Promise<FormConfig | undefined> {
-  const formState = await getForm(id, "State");
-  if (!formState) {
-    return undefined;
+async function getFormCurrentState(id: string): Promise<FormState | undefined> {
+  const formState = await get<FormState>(id, "State");
+  const formConfig = await getFormConfig(id);
+  let patchedState = formState;
+  if (formState && formConfig) {
+    patchedState = await patchWithGlobalValues(formConfig, formState);
   }
-
-  return patchWithGlobalValues(formState);
+  return patchedState;
 }
 
 /**
@@ -70,17 +91,20 @@ export async function getFormState(
  * @param form - The form configuration object.
  * @returns A promise that resolves to the updated form configuration object.
  */
-export async function patchWithGlobalValues(
-  form: FormConfig
-): Promise<FormConfig> {
-  for (const key in form.inputs) {
-    const input = form.inputs[key];
-    if (input && input.globalKey) {
-      const globalValue = await getGlobalValue(input.globalKey);
-      input.value = globalValue;
+async function patchWithGlobalValues(
+  config: FormConfig,
+  state: FormState
+): Promise<FormState> {
+  for (const key in state) {
+    const value = state.state[key];
+    const conf = config.inputsConfig[key]!;
+    if (value && conf.globalKey) {
+      const globalValue = await getGlobalValue(conf.globalKey);
+      //patch the value with the global value
+      state.state[key] = globalValue;
     }
   }
-  return form;
+  return state;
 }
 
 /**
@@ -90,16 +114,19 @@ export async function patchWithGlobalValues(
  * @param inputId - The ID of the input.
  * @returns A promise that resolves to an array of InputOption objects.
  */
-export async function getOptions(
+export async function getInputOptions(
   formId: string,
   inputId: string
 ): Promise<InputOption<unknown>[]> {
   //we take formValue because it will take the most recent state into account
   //and because input value could influence the options
-  const formState = await getFormValue(formId);
-  const inputConfig = formState?.inputs[inputId];
-  //TODO add support for dynamic options based on input dependencies values
-  const options = inputConfig?.options || [];
+  const formConfig = await getFormConfig(formId)!;
+  const formState = await getFormState(formId)!;
+  if (!formConfig) {
+    console.warn(`Form config <${formId}> not found`);
+  }
+  const inputConfig = formConfig?.inputsConfig[inputId];
+  const options = inputConfig!.options!(formState, formConfig!) || [];
   return options;
 }
 
@@ -110,11 +137,15 @@ export async function getOptions(
  * @param inputId - The ID of the input.
  * @returns A Promise that resolves to the value of the input.
  */
-export async function getValue(
+export async function getInputValue(
   formId: string,
   inputId: string
-): Promise<unknown> {
+): Promise<unknown | undefined> {
   //we take formValue because it will take the most recent state into account
-  const formState = await getFormValue(formId);
-  return formState?.inputs[inputId]?.value;
+  const formState = await getFormState(formId);
+  return formState!.state[inputId];
+}
+
+export async function getGlobalValue<T>(id: string): Promise<T> {
+  return (await getGlobalValueFromDb(id)) as T;
 }
