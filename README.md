@@ -1,11 +1,25 @@
-# Perseform
+<div align="center">
+  <h1>Perseform</h1>
+  <p>
+    <strong>Keep track of forms state and inputs dependencies</strong>
+  </p>
+  <p>
+    <a href="https://www.npmjs.com/package/perseform"><img src="https://img.shields.io/npm/v/perseform.svg" alt="npm version"></a>
+    <img src="https://img.shields.io/npm/dm/perseform.svg" alt="npm downloads">
+
+![example branch parameter](https://github.com/heargo/perseform/actions/workflows/main.yml/badge.svg?branch=main)
+
+</p>
+
+</div>
 
 Perseform is a tool to keep track of forms state and inputs dependencies. This is useful if you have an app with a lot of filters and you want to keep track of the state of each filter and the dependencies between them.
 
-Features :
+## Features
 
-- Keep track of the state of each input
-- Allow to define dependencies between inputs
+- [x] Keep track of the state of each input
+
+- [ ] Allow to define dependencies between inputs
 
 ## Installation
 
@@ -15,14 +29,36 @@ npm install perseform
 
 ## Usage
 
-TODO
+If we want to create a form with 2 inputs, `country` and `city`, where `country` is a global input and we want to keep track of the state of the form, we can do the following:
 
-## Use changeset to create a new version
+```typescript
+//create perseform form
+saveFormConfig({
+  id: "myFormId",
+  inputsConfig: {
+    //country will be a global input
+    country: {
+      globalKey: "country",
+    },
+    //no need to configure special behavior for city
+  },
+});
 
-To create a new version of the package, you need to use the `changeset` tool. To do that, you need to run the following command:
+// load state of the form
+const state = await getFormState("myFormId");
 
-```bash
-npm run update
+//you can then use the state to populate the form
+...
+
+//Listen to changes in your form (the implementation depend on your framework)
+// and save form state
+this.form.valueChanges.subscribe((value) => {
+  saveFormState({
+    id: "form 1",
+    state: {
+      country: value.country,
+      city: value.city,
+    },
+  });
+});
 ```
-
-This will open an interactive prompt where you can select the type of change you want to make (major, minor, patch) and write a description of the changes you made. After that, the tool will create a new file in the `.changeset` folder with the changes you made.
