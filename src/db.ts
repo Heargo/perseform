@@ -76,7 +76,6 @@ export async function get<T>(
       const getRequest = store.get(id);
 
       getRequest.onsuccess = () => {
-        console.log("getForm", id, type, getRequest.result);
         resolve(getRequest.result);
       };
       getRequest.onerror = (event) => {

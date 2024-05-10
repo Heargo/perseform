@@ -11,10 +11,6 @@ export interface FormState {
 export interface InputConfig<T> {
   globalKey?: string;
   value?: T;
-  options?: (
-    state: FormState | undefined,
-    config: FormConfig
-  ) => InputOption<T>[];
   dependencies?: (InputDependency | string)[];
 }
 
