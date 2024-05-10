@@ -3,8 +3,9 @@ export {
   saveFormConfig,
   saveFormState,
   getFormState,
-  getInputOptions,
   getInputValue,
   getGlobalValue,
+  isEnable,
+  getInputDependenciesState,
 } from "./main";
 export { initIndexDb as initPerseform } from "./db";

@@ -108,29 +108,6 @@ async function patchWithGlobalValues(
 }
 
 /**
- * Retrieves the options for a specific input in a form.
- *
- * @param formId - The ID of the form.
- * @param inputId - The ID of the input.
- * @returns A promise that resolves to an array of InputOption objects.
- */
-export async function getInputOptions(
-  formId: string,
-  inputId: string
-): Promise<InputOption<unknown>[]> {
-  //we take formValue because it will take the most recent state into account
-  //and because input value could influence the options
-  const formConfig = await getFormConfig(formId)!;
-  const formState = await getFormState(formId)!;
-  if (!formConfig) {
-    console.warn(`Form config <${formId}> not found`);
-  }
-  const inputConfig = formConfig?.inputsConfig[inputId];
-  const options = inputConfig!.options!(formState, formConfig!) || [];
-  return options;
-}
-
-/**
  * Retrieves the value of an input in a form.
  *
  * @param formId - The ID of the form.
@@ -146,6 +123,84 @@ export async function getInputValue(
   return formState!.state[inputId];
 }
 
+/**
+ * Retrieves a global value based on the provided ID.
+ *
+ * @param id - The ID of the value to retrieve.
+ * @returns A promise that resolves to the retrieved value.
+ * @template T - The type of the value to retrieve.
+ */
 export async function getGlobalValue<T>(id: string): Promise<T> {
   return (await getGlobalValueFromDb(id)) as T;
+}
+
+/**
+ * Retrieves the input dependencies state for a given form and input ID.
+ * @param formId The ID of the form.
+ * @param inputId The ID of the input.
+ * @returns A promise that resolves to an object containing the input dependencies.
+ */
+export async function getInputDependenciesState(
+  formId: string,
+  inputId: string
+): Promise<{ [key: string]: unknown }> {
+  //get the input dependencies if any
+  const depValues = {} as { [key: string]: unknown };
+
+  const formConfig = await getFormConfig(formId);
+  const dependencies = formConfig!.inputsConfig[inputId]?.dependencies;
+
+  if (dependencies) {
+    //get current state value for each dependency
+    for (const dep of dependencies) {
+      const depId = typeof dep === "string" ? dep : dep.id;
+      //dependency form is the same as the parent except if it is specified
+      const depFormId =
+        typeof dep === "string" ? formId : dep.parentFormId ?? formId;
+      const depValue = await getInputValue(depFormId, depId);
+      depValues[depId] = depValue;
+    }
+  }
+  return depValues;
+}
+
+/**
+ * Checks if an input is enabled based on its dependencies.
+ * @param formId - The ID of the form.
+ * @param inputId - The ID of the input.
+ * @returns A Promise that resolves to a boolean indicating whether the input is enabled.
+ */
+export async function isEnable(
+  formId: string,
+  inputId: string
+): Promise<boolean> {
+  console.log("isEnable");
+  //get the input dependencies if any
+  const enable = true;
+
+  const formConfig = await getFormConfig(formId);
+  const dependencies = formConfig!.inputsConfig[inputId]?.dependencies;
+
+  if (dependencies) {
+    //get current state value for each dependency
+    for (const dep of dependencies) {
+      const depId = typeof dep === "string" ? dep : dep.id;
+      //dependency form is the same as the parent except if it is specified
+      const depFormId =
+        typeof dep === "string" ? formId : dep.parentFormId ?? formId;
+      const depValue = await getInputValue(depFormId, depId);
+
+      //if the dependency has triggering values and the current value is not in the list, the input is not enabled
+      if (
+        typeof dep !== "string" &&
+        dep.triggeringValues &&
+        !dep.triggeringValues.includes(depValue)
+      ) {
+        return false;
+      } else {
+      }
+    }
+  }
+
+  return enable;
 }
