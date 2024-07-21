@@ -42,9 +42,11 @@ export async function saveFormConfig(form: FormConfig): Promise<IDBValidKey> {
   //create global state if needed
   for (const key in form.inputsConfig) {
     const input = form.inputsConfig[key]!;
-    const globalValue = getGlobalValueFromDb(input.globalKey!);
-    if (input.globalKey && !globalValue) {
-      await saveGlobalValue(input.globalKey, input.value);
+    if (input.globalKey) {
+      const globalValue = getGlobalValueFromDb(input.globalKey);
+      if (!globalValue) {
+        await saveGlobalValue(input.globalKey, input.value);
+      }
     }
   }
   return save(form, "Config");
@@ -130,7 +132,8 @@ export async function getInputValue(
  * @returns A promise that resolves to the retrieved value.
  * @template T - The type of the value to retrieve.
  */
-export async function getGlobalValue<T>(id: string): Promise<T> {
+export async function getGlobalValue<T>(id: string): Promise<T | undefined> {
+  if (!id) return undefined;
   return (await getGlobalValueFromDb(id)) as T;
 }
 

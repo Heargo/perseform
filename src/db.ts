@@ -101,7 +101,7 @@ export async function getGlobalValueFromDb(
       const store = transaction.objectStore("globalValue");
       const getRequest = store.get(id);
       getRequest.onsuccess = () => {
-        resolve(getRequest.result.value);
+        resolve(getRequest.result?.value);
       };
       getRequest.onerror = (event) => {
         reject(event);
