@@ -1,7 +1,8 @@
 <div align="center">
+  <img src="./assets/logo.png" alt="Perseform logo" width="200" />
   <h1>Perseform</h1>
   <p>
-    <strong>Keep track of forms state and inputs dependencies</strong>
+    <strong>Persistent forms state and inputs dependencies</strong>
   </p>
   <p>
     <a href="https://www.npmjs.com/package/perseform"><img src="https://img.shields.io/npm/v/perseform.svg" alt="npm version"></a>
@@ -31,6 +32,7 @@ Perseform is a tool to keep track of forms state and inputs dependencies. This i
   - [`initPerseform`](#initperseform)
   - [`getInputValue`](#getinputvalue)
   - [`getGlobalValue`](#getglobalvalue)
+- [Attribution](#attribution)
 
 ## Features
 
@@ -223,3 +225,7 @@ example :
 ```typescript
 const value = await getGlobalValue("myFormId", "country");
 ```
+
+## Attribution
+
+<a href="https://www.flaticon.com/free-icons/tree" title="tree icons">Tree icons created by justicon - Flaticon</a>
