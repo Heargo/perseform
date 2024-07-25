@@ -200,7 +200,6 @@ export async function isEnable(
         !dep.triggeringValues.includes(depValue)
       ) {
         return false;
-      } else {
       }
     }
   }
